@@ -5,6 +5,9 @@ namespace App\Models;
 use App\Concerns\GeneratesUniqueTeamSlugs;
 use App\Enums\TeamRole;
 use Database\Factories\TeamFactory;
+use FilamentCraft\Concerns\HasSite;
+use FilamentCraft\Contracts\SiteOwner;
+use FilamentCraft\Models\Site;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,10 +30,10 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, User> $members
  */
 #[Fillable(['name', 'slug', 'is_personal'])]
-class Team extends Model
+class Team extends Model implements SiteOwner
 {
     /** @use HasFactory<TeamFactory> */
-    use GeneratesUniqueTeamSlugs, HasFactory, SoftDeletes;
+    use GeneratesUniqueTeamSlugs, HasFactory, HasSite, SoftDeletes;
 
     /**
      * Bootstrap the model and its traits.
@@ -42,12 +45,6 @@ class Team extends Model
         static::creating(function (Team $team) {
             if (empty($team->slug)) {
                 $team->slug = static::generateUniqueTeamSlug($team->name);
-            }
-        });
-
-        static::updating(function (Team $team) {
-            if ($team->isDirty('name')) {
-                $team->slug = static::generateUniqueTeamSlug($team->name, $team->id);
             }
         });
     }
@@ -93,6 +90,14 @@ class Team extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(TeamInvitation::class);
+    }
+
+    /**
+     * Get the team's website, whether it is live or not.
+     */
+    public function website(): ?Site
+    {
+        return $this->sites()->oldest('id')->first();
     }
 
     /**

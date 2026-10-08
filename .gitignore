@@ -37,3 +37,9 @@ yarn-error.log
 /boost.json
 /opencode.json
 /opencode.jsonc
+/public/css/filament
+/public/fonts/filament
+/public/js/filament
+/public/css/filamentcraft
+/public/js/filamentcraft
+/public/images/filamentcraft

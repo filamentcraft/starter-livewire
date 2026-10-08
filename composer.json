@@ -1,15 +1,22 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/livewire-starter-kit",
+    "name": "filamentcraft/starter-livewire",
     "type": "project",
-    "description": "The official Laravel starter kit for Livewire.",
+    "description": "Laravel + Livewire + Flux starter kit with teams, where every team builds and publishes its own website with FilamentCraft.",
     "keywords": [
         "laravel",
-        "framework"
+        "livewire",
+        "flux",
+        "filamentcraft",
+        "starter-kit",
+        "website-builder",
+        "multi-tenant"
     ],
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "filament/filament": "^5.0",
+        "filamentcraft/filamentcraft": "^1.41.2",
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
@@ -45,10 +52,13 @@
     },
     "scripts": {
         "setup": [
-            "composer install",
+            "@php bin/license",
+            "@composer install --no-interaction",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@php artisan key:generate --ansi",
+            "@php artisan migrate --seed --force --ansi",
+            "@php artisan storage:link --force --ansi",
             "npm install",
             "npm run build"
         ],
@@ -67,7 +77,7 @@
             "@test"
         ],
         "types:check": [
-            "phpstan analyse"
+            "phpstan analyse --memory-limit=1G"
         ],
         "test": [
             "@php artisan config:clear --ansi",
@@ -77,7 +87,9 @@
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi"
+            "@php artisan package:discover --ansi",
+            "@php artisan filament:upgrade --ansi",
+            "@php artisan filamentcraft:upgrade --no-migrate --ansi"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
@@ -86,9 +98,11 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
         ],
         "post-create-project-cmd": [
+            "@php bin/license",
             "@php artisan key:generate --ansi",
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan migrate --graceful --ansi"
+            "@php artisan migrate --seed --graceful --force --ansi",
+            "@php artisan storage:link --force --ansi"
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
@@ -112,5 +126,13 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": [
+        {
+            "name": "filamentcraft",
+            "type": "composer",
+            "url": "https://packages.filamentcraft.dev"
+        }
+    ],
+    "homepage": "https://filamentcraft.dev"
 }

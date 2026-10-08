@@ -17,18 +17,24 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
+
+                    @can('manageWebsite', auth()->user()->currentTeam)
+                        <flux:sidebar.item icon="globe-alt" :href="route('website.show')" :current="request()->routeIs('website.show')" wire:navigate>
+                            {{ __('Website') }}
+                        </flux:sidebar.item>
+
+                        <flux:sidebar.item icon="inbox" :href="route('website.inbox')" :current="request()->routeIs('website.inbox')" wire:navigate>
+                            {{ __('Inbox') }}
+                        </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
             <flux:spacer />
 
             <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
-                </flux:sidebar.item>
-
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
+                <flux:sidebar.item icon="book-open-text" href="https://filamentcraft.dev/guide/inertia-react" target="_blank">
+                    {{ __('FilamentCraft docs') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 

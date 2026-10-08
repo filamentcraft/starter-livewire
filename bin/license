@@ -1,0 +1,156 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * FilamentCraft is installed from a private Composer registry, so this runs before
+ * `composer install` and makes sure Composer can authenticate against it.
+ */
+
+const HOST = 'packages.filamentcraft.dev';
+
+chdir(dirname(__DIR__));
+
+function line(string $text = ''): void
+{
+    fwrite(STDOUT, $text.PHP_EOL);
+}
+
+function fail(string $text): never
+{
+    fwrite(STDERR, PHP_EOL."  \033[31m✗\033[0m {$text}".PHP_EOL.PHP_EOL);
+    exit(1);
+}
+
+function composer(): string
+{
+    $binary = getenv('COMPOSER_BINARY');
+
+    return $binary !== false && $binary !== '' ? escapeshellarg(PHP_BINARY).' '.escapeshellarg($binary) : 'composer';
+}
+
+/** @return array{0: string, 1: string}|null */
+function configuredCredentials(): ?array
+{
+    $sources = [getenv('COMPOSER_AUTH') ?: null, is_file('auth.json') ? (string) file_get_contents('auth.json') : null];
+
+    exec(composer().' config --global http-basic.'.HOST.' 2>/dev/null', $output, $status);
+
+    if ($status === 0) {
+        $sources[] = json_encode(['http-basic' => [HOST => json_decode(implode('', $output), true)]]);
+    }
+
+    foreach ($sources as $json) {
+        $basic = json_decode((string) $json, true)['http-basic'][HOST] ?? null;
+
+        if (is_array($basic) && ($basic['username'] ?? '') !== '' && ($basic['password'] ?? '') !== '') {
+            return [(string) $basic['username'], (string) $basic['password']];
+        }
+    }
+
+    return null;
+}
+
+function authenticates(string $email, string $key): bool
+{
+    $context = stream_context_create(['http' => [
+        'method' => 'GET',
+        'header' => 'Authorization: Basic '.base64_encode("{$email}:{$key}"),
+        'ignore_errors' => true,
+        'timeout' => 15,
+    ]]);
+
+    $body = @file_get_contents('https://'.HOST.'/packages.json', false, $context);
+
+    if ($body === false) {
+        fail('Could not reach '.HOST.'. Check your connection and run `composer setup` again.');
+    }
+
+    return str_contains($http_response_header[0] ?? '', ' 200');
+}
+
+function ask(string $question, bool $secret = false): string
+{
+    fwrite(STDOUT, "  {$question} ");
+
+    if ($secret && DIRECTORY_SEPARATOR === '/') {
+        shell_exec('stty -echo');
+        $answer = fgets(STDIN);
+        shell_exec('stty echo');
+        fwrite(STDOUT, PHP_EOL);
+    } else {
+        $answer = fgets(STDIN);
+    }
+
+    return trim((string) $answer);
+}
+
+function writeEnvKey(string $key): void
+{
+    if (! is_file('.env')) {
+        copy('.env.example', '.env');
+    }
+
+    $env = (string) file_get_contents('.env');
+    $line = 'FILAMENTCRAFT_LICENSE_KEY='.$key;
+
+    $env = preg_match('/^FILAMENTCRAFT_LICENSE_KEY=.*$/m', $env) === 1
+        ? (string) preg_replace('/^FILAMENTCRAFT_LICENSE_KEY=.*$/m', $line, $env)
+        : rtrim($env).PHP_EOL.$line.PHP_EOL;
+
+    file_put_contents('.env', $env);
+}
+
+$credentials = configuredCredentials();
+
+if ($credentials !== null) {
+    writeEnvKey($credentials[1]);
+    line('  FilamentCraft credentials found for '.HOST.'.');
+    exit(0);
+}
+
+$email = (string) getenv('FILAMENTCRAFT_EMAIL');
+$key = (string) getenv('FILAMENTCRAFT_KEY');
+$interactive = function_exists('stream_isatty') && stream_isatty(STDIN);
+
+if (($email === '' || $key === '') && ! $interactive) {
+    fail('No FilamentCraft credentials. Set FILAMENTCRAFT_EMAIL and FILAMENTCRAFT_KEY, or run'.PHP_EOL
+        .'    composer config http-basic.'.HOST.' <purchase-email> <license-key>');
+}
+
+if ($email === '' || $key === '') {
+    line();
+    line('  This starter kit installs FilamentCraft from '.HOST.'.');
+    line('  Sign in with the email you bought it with and your license key.');
+    line('  No license yet? https://filamentcraft.dev/pricing');
+    line();
+}
+
+for ($attempt = 1; $attempt <= 3; $attempt++) {
+    if ($email === '' || $key === '') {
+        $email = ask('Purchase email:');
+        $key = ask('License key:', secret: true);
+    }
+
+    if (authenticates($email, $key)) {
+        exec(composer().' config http-basic.'.HOST.' '.escapeshellarg($email).' '.escapeshellarg($key), result_code: $status);
+
+        if ($status !== 0) {
+            fail('Composer could not save auth.json.');
+        }
+
+        writeEnvKey($key);
+        line('  Saved to auth.json (git-ignored) and FILAMENTCRAFT_LICENSE_KEY in .env.');
+        exit(0);
+    }
+
+    if (! $interactive) {
+        break;
+    }
+
+    line('  That email and key were not accepted. Try again.');
+    $email = $key = '';
+}
+
+fail('The license could not be verified against '.HOST.'.');

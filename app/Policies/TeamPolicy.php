@@ -91,6 +91,14 @@ class TeamPolicy
     }
 
     /**
+     * Determine whether the user can build and publish the team's website.
+     */
+    public function manageWebsite(User $user, Team $team): bool
+    {
+        return $user->hasTeamPermission($team, TeamPermission::ManageWebsite);
+    }
+
+    /**
      * Determine whether the user can delete the model.
      */
     public function delete(User $user, Team $team): bool

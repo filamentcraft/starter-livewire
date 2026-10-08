@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+use FilamentCraft\Database\Keys;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('filamentcraft_themes', function (Blueprint $table): void {
+            Keys::id($table);
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->json('tokens_json');
+            $table->boolean('is_default')->default(false);
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('filamentcraft_themes');
+    }
+};
